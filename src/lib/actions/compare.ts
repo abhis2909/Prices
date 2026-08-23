@@ -1,7 +1,7 @@
 "use server";
 
-import Anthropic from "@anthropic-ai/sdk";
-import { anthropic } from "@/lib/anthropic";
+import { ApiError } from "@google/genai";
+import { gemini } from "@/lib/gemini";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { comparePhotoSchema } from "@/lib/validation";
@@ -17,6 +17,36 @@ export type CompareState =
       fieldErrors?: undefined;
     }
   | null;
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB — plenty for a listing photo
+
+/**
+ * Unlike Claude, Gemini's generateContent can't fetch an arbitrary external
+ * image URL itself (its `fileData.fileUri` field is documented as
+ * Google-Cloud-Storage-only) — the caller has to supply raw bytes. So this
+ * downloads the listing photo server-side and hands Gemini the bytes
+ * directly as inline base64 data.
+ */
+async function fetchImageAsInlineData(
+  url: string,
+): Promise<{ data: string; mimeType: string }> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) {
+    throw new Error(`Couldn't download that photo (HTTP ${res.status}).`);
+  }
+
+  const contentType = res.headers.get("content-type")?.split(";")[0]?.trim();
+  if (!contentType?.startsWith("image/")) {
+    throw new Error("That URL doesn't point at an image.");
+  }
+
+  const buffer = await res.arrayBuffer();
+  if (buffer.byteLength > MAX_IMAGE_BYTES) {
+    throw new Error("That image is too large to compare (8MB max).");
+  }
+
+  return { data: Buffer.from(buffer).toString("base64"), mimeType: contentType };
+}
 
 /**
  * On-demand check, independent of the (not-yet-built) automated eBay
@@ -40,6 +70,10 @@ export async function compareCardPhoto(
     return { error: "Card not found." };
   }
 
+  if (!process.env.GEMINI_API_KEY) {
+    return { error: "AI comparison isn't configured — GEMINI_API_KEY is missing." };
+  }
+
   const cardDescription = [
     `Sport: ${card.sport}`,
     `Year: ${card.year}`,
@@ -51,50 +85,44 @@ export async function compareCardPhoto(
     .filter(Boolean)
     .join("\n");
 
-  let response;
+  let text: string | undefined;
   try {
-    response = await anthropic.messages.create({
-      model: "claude-opus-5",
-      max_tokens: 300,
-      output_config: { effort: "low" },
-      messages: [
+    const image = await fetchImageAsInlineData(imageUrl);
+
+    const response = await gemini.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        { inlineData: image },
         {
-          role: "user",
-          content: [
-            { type: "image", source: { type: "url", url: imageUrl } },
-            {
-              type: "text",
-              text: `This photo is from an eBay listing. Here is the card I've logged as owning:\n${cardDescription}\n\nDoes this photo plausibly show that exact card — same player, set, parallel, and (if graded) a grading label consistent with what's described? A tight crop, glare, or an off angle is fine; a different player, set, parallel, or grading company/grade is not.\n\nRespond in exactly this format and nothing else:\nVERDICT: MATCH, MISMATCH, or UNCERTAIN\nREASON: one sentence explaining why.`,
-            },
-          ],
+          text: `This photo is from an eBay listing. Here is the card I've logged as owning:\n${cardDescription}\n\nDoes this photo plausibly show that exact card — same player, set, parallel, and (if graded) a grading label consistent with what's described? A tight crop, glare, or an off angle is fine; a different player, set, parallel, or grading company/grade is not.\n\nRespond in exactly this format and nothing else:\nVERDICT: MATCH, MISMATCH, or UNCERTAIN\nREASON: one sentence explaining why.`,
         },
       ],
+      config: {
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     });
+
+    text = response.text;
   } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError) {
-      return { error: "AI comparison isn't configured — ANTHROPIC_API_KEY is missing or invalid." };
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return { error: "Rate limited by the comparison service — try again shortly." };
-    }
-    if (err instanceof Anthropic.APIError) {
+    if (err instanceof ApiError) {
+      if (err.status === 401 || err.status === 403) {
+        return { error: "AI comparison isn't configured — GEMINI_API_KEY is missing or invalid." };
+      }
+      if (err.status === 429) {
+        return { error: "Rate limited by the free tier — try again in a minute." };
+      }
       return { error: `Comparison service error: ${err.message}` };
     }
-    // The SDK validates credentials client-side before any request goes
-    // out, so a missing key surfaces as a plain Error, not an APIError.
-    if (err instanceof Error && err.message.includes("Could not resolve authentication method")) {
-      return { error: "AI comparison isn't configured — ANTHROPIC_API_KEY is missing." };
+    if (err instanceof Error) {
+      // Our own fetchImageAsInlineData errors, or a network failure.
+      return { error: err.message };
     }
     console.error("compareCardPhoto: unexpected error", err);
     return { error: "Something went wrong running the comparison." };
   }
 
-  let text = "";
-  for (const block of response.content) {
-    if (block.type === "text") {
-      text = block.text;
-      break;
-    }
+  if (!text) {
+    return { error: "Got an empty response from the comparison service — try again." };
   }
 
   const verdictMatch = text.match(/VERDICT:\s*(MATCH|MISMATCH|UNCERTAIN)/i);

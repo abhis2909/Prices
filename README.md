@@ -26,8 +26,9 @@ full roadmap.
 
 2. **Environment.** Copy `.env.example` to `.env` and fill in
    `DATABASE_URL` and `AUTH_SECRET` (generate one with `npx auth secret`).
-   `ANTHROPIC_API_KEY` is optional — only the "Compare with AI" listing-photo
-   check on a card's page needs it; everything else works without it.
+   `GEMINI_API_KEY` is optional — only the "Compare with AI" listing-photo
+   check on a card's page needs it; everything else works without it. Get a
+   free key from [Google AI Studio](https://aistudio.google.com/apikey).
 
 3. **Install and migrate:**
 
@@ -63,9 +64,9 @@ Phase 1 (this repo, today):
   value-over-time chart
 - Optional visual receipts on a manually-logged price (listing URL + photo,
   hotlinked, never re-hosted) and an on-demand "Compare with AI" check —
-  paste a listing photo and Claude judges whether it plausibly matches the
-  card's declared attributes. Needs `ANTHROPIC_API_KEY`; independent of the
-  eBay integration below.
+  paste a listing photo and Gemini judges whether it plausibly matches the
+  card's declared attributes. Needs a free `GEMINI_API_KEY`; independent of
+  the eBay integration below.
 
 Phase 2 (not built yet): a scheduled worker that pulls eBay sold comps,
 matches them to a card + grade, confidence-scores the match (now including
