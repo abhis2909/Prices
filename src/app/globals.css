@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/*
+ * Slab Ledger palette — a brass/pine "trading card ledger" identity carried
+ * over from the design plan. Raw tokens live here; @theme inline below maps
+ * them into Tailwind's utility namespace so `bg-surface`, `text-ink`, etc.
+ * stay in sync with the light/dark values without baking a snapshot in.
+ */
+:root {
+  --bg: #f2efe6;
+  --surface: #ffffff;
+  --surface-2: #e8e2d0;
+  --ink: #1c2620;
+  --ink-soft: #4b5a50;
+  --line: #d9d2bc;
+  --accent: #93630f;
+  --accent-strong: #7a5216;
+  --pine: #2a5c4c;
+  --gain: #2e7d46;
+  --loss: #b23a3a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121915;
+    --surface: #1a2320;
+    --surface-2: #212c27;
+    --ink: #ece6d6;
+    --ink-soft: #9cab9f;
+    --line: #33413a;
+    --accent: #ddad5b;
+    --accent-strong: #efc784;
+    --pine: #6fa98e;
+    --gain: #5fc286;
+    --loss: #e28080;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-pine: var(--pine);
+  --color-gain: var(--gain);
+  --color-loss: var(--loss);
+
+  --font-display: var(--font-oswald);
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
