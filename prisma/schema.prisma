@@ -98,6 +98,11 @@ model PriceSnapshot {
   sampleSize  Int         @default(1)
   confidence  Decimal     @db.Decimal(3, 2) @default(1)
   notes       String?
+  // Optional visual receipt for a manually-logged price: the listing you
+  // were looking at, and its photo (hotlinked, never re-hosted — see the
+  // design plan's Visual verification section).
+  listingUrl  String?
+  imageUrl    String?
   createdAt   DateTime    @default(now())
 
   card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)

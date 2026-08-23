@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from "@/lib/money";
 import { LinkButton, SubmitButton } from "@/components/ui/buttons";
 import { ConfirmDeleteForm } from "@/components/ui/ConfirmDeleteForm";
 import { AddPriceForm } from "@/components/prices/AddPriceForm";
+import { ComparePhotoForm } from "@/components/prices/ComparePhotoForm";
 
 export default async function CardDetailPage({
   params,
@@ -115,6 +116,14 @@ export default async function CardDetailPage({
         <div className="rounded-lg border border-line bg-surface p-4">
           <AddPriceForm cardId={card.id} gradeSuggestions={gradeSuggestions} />
         </div>
+
+        <div className="mt-4 rounded-lg border border-line bg-surface-2 p-4">
+          <h3 className="mb-3 mt-0 font-mono text-xs font-semibold uppercase tracking-wide text-ink-soft">
+            Compare a listing photo with AI
+          </h3>
+          <ComparePhotoForm cardId={card.id} />
+        </div>
+
         {priceSnapshots.length === 0 ? (
           <p className="mt-4 rounded-lg border border-dashed border-line py-10 text-center text-sm text-ink-soft">
             No price observations logged yet.
@@ -124,6 +133,7 @@ export default async function CardDetailPage({
             <table className="w-full min-w-[520px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line text-left font-mono text-xs uppercase tracking-wide text-ink-soft">
+                  <th className="px-4 py-3 font-medium">Photo</th>
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium">Grade</th>
                   <th className="px-4 py-3 text-right font-medium">Price</th>
@@ -133,6 +143,34 @@ export default async function CardDetailPage({
               <tbody>
                 {priceSnapshots.map((snap) => (
                   <tr key={snap.id} className="border-b border-line last:border-0">
+                    <td className="px-4 py-3">
+                      {snap.imageUrl ? (
+                        <a
+                          href={snap.listingUrl ?? snap.imageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View listing photo"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- external, unpredictable host; not worth next/image remotePatterns config for a thumbnail */}
+                          <img
+                            src={snap.imageUrl}
+                            alt=""
+                            className="h-10 w-10 rounded border border-line object-cover"
+                          />
+                        </a>
+                      ) : snap.listingUrl ? (
+                        <a
+                          href={snap.listingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-accent-strong hover:underline"
+                        >
+                          Listing
+                        </a>
+                      ) : (
+                        <span className="text-ink-soft">&mdash;</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-ink-soft">{formatDate(snap.observedAt)}</td>
                     <td className="px-4 py-3 font-mono text-xs">{snap.grade}</td>
                     <td className="px-4 py-3 text-right tabular-nums">

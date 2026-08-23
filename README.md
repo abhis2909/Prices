@@ -26,6 +26,8 @@ full roadmap.
 
 2. **Environment.** Copy `.env.example` to `.env` and fill in
    `DATABASE_URL` and `AUTH_SECRET` (generate one with `npx auth secret`).
+   `ANTHROPIC_API_KEY` is optional — only the "Compare with AI" listing-photo
+   check on a card's page needs it; everything else works without it.
 
 3. **Install and migrate:**
 
@@ -59,9 +61,15 @@ Phase 1 (this repo, today):
 - A live-computed portfolio dashboard (cost basis, market value, gain,
   return) plus an on-demand "record a snapshot" button that builds a
   value-over-time chart
+- Optional visual receipts on a manually-logged price (listing URL + photo,
+  hotlinked, never re-hosted) and an on-demand "Compare with AI" check —
+  paste a listing photo and Claude judges whether it plausibly matches the
+  card's declared attributes. Needs `ANTHROPIC_API_KEY`; independent of the
+  eBay integration below.
 
 Phase 2 (not built yet): a scheduled worker that pulls eBay sold comps,
-matches them to a card + grade, confidence-scores the match, and writes
+matches them to a card + grade, confidence-scores the match (now including
+a visual-match signal from the same AI comparison), and writes
 `PriceSnapshot` rows automatically — with a manual review queue for
 low-confidence matches. Phase 3 is a native mobile app on the same API.
 

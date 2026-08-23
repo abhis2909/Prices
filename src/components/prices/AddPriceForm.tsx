@@ -43,6 +43,24 @@ export function AddPriceForm({ cardId, gradeSuggestions }: { cardId: string; gra
           <SubmitButton pendingText="Logging…">Log price</SubmitButton>
         </div>
       </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <TextField
+          label="Listing URL"
+          name="listingUrl"
+          id="price-listingUrl"
+          type="url"
+          placeholder="Link to the eBay listing (optional)"
+          error={state?.fieldErrors?.listingUrl}
+        />
+        <TextField
+          label="Photo URL"
+          name="imageUrl"
+          id="price-imageUrl"
+          type="url"
+          placeholder="Listing photo, for your own receipt (optional)"
+          error={state?.fieldErrors?.imageUrl}
+        />
+      </div>
       <datalist id="grade-suggestions">
         {gradeSuggestions.map((g) => (
           <option key={g} value={g} />

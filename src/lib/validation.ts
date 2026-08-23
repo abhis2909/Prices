@@ -59,15 +59,30 @@ export const sellHoldingSchema = z.object({
   soldDate: z.string().trim().min(1, "Sold date is required"),
 });
 
+const optionalUrl = z
+  .string()
+  .trim()
+  .max(2000)
+  .optional()
+  .transform((v) => (v ? v : undefined))
+  .refine((v) => v === undefined || z.url().safeParse(v).success, "Enter a valid URL");
+
 export const priceSnapshotSchema = z.object({
   cardId: z.string().trim().min(1),
   grade: z.string().trim().min(1, "Grade is required").max(40),
   medianPrice: z.coerce.number().min(0, "Price can't be negative"),
   observedAt: z.string().trim().min(1, "Date is required"),
+  listingUrl: optionalUrl,
+  imageUrl: optionalUrl,
   notes: z
     .string()
     .trim()
     .max(2000)
     .optional()
     .transform((v) => (v ? v : undefined)),
+});
+
+export const comparePhotoSchema = z.object({
+  cardId: z.string().trim().min(1),
+  imageUrl: z.url("Enter a valid image URL"),
 });
