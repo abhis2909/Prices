@@ -90,18 +90,18 @@ export async function compareCardPhoto(
     const image = await fetchImageAsInlineData(imageUrl);
 
     const response = await gemini.models.generateContent({
-      // gemini-2.5-flash was retired for new users; the API's own error
-      // message pointed at this replacement (verified live, not guessed).
-      model: "gemini-3.6-flash",
+      // gemini-2.5-flash was retired for new users. Both 3.6 and 3.7 flash
+      // work as of this writing (verified live, including the vision
+      // path) — 3.7 is the newer of the two.
+      model: "gemini-3.7-flash",
       contents: [
         { inlineData: image },
         {
           text: `This photo is from an eBay listing. Here is the card I've logged as owning:\n${cardDescription}\n\nDoes this photo plausibly show that exact card — same player, set, parallel, and (if graded) a grading label consistent with what's described? A tight crop, glare, or an off angle is fine; a different player, set, parallel, or grading company/grade is not.\n\nRespond in exactly this format and nothing else:\nVERDICT: MATCH, MISMATCH, or UNCERTAIN\nREASON: one sentence explaining why.`,
         },
       ],
-      // No thinkingConfig: gemini-3.6-flash rejected thinkingBudget: 0 with
-      // a 400 (verified live) — the earlier low-effort setting doesn't
-      // carry over, so this just uses the model's default.
+      // No thinkingConfig: the 3.x flash models reject thinkingBudget: 0
+      // with a 400 (verified live) — this just uses the model's default.
     });
 
     text = response.text;
@@ -113,7 +113,13 @@ export async function compareCardPhoto(
       if (err.status === 429) {
         return { error: "Rate limited by the free tier — try again in a minute." };
       }
-      return { error: `Comparison service error: ${err.message}` };
+      if (err.status === 503) {
+        // Transient — verified live that a retry a few seconds later just
+        // works, this isn't a sign anything is actually broken.
+        return { error: "The comparison model is under heavy load right now — try again in a moment." };
+      }
+      console.error("compareCardPhoto: Gemini API error", err.status, err.message);
+      return { error: "Comparison service error — try again in a moment." };
     }
     if (err instanceof Error) {
       // Our own fetchImageAsInlineData errors, or a network failure.
