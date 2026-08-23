@@ -90,16 +90,18 @@ export async function compareCardPhoto(
     const image = await fetchImageAsInlineData(imageUrl);
 
     const response = await gemini.models.generateContent({
-      model: "gemini-2.5-flash",
+      // gemini-2.5-flash was retired for new users; the API's own error
+      // message pointed at this replacement (verified live, not guessed).
+      model: "gemini-3.6-flash",
       contents: [
         { inlineData: image },
         {
           text: `This photo is from an eBay listing. Here is the card I've logged as owning:\n${cardDescription}\n\nDoes this photo plausibly show that exact card — same player, set, parallel, and (if graded) a grading label consistent with what's described? A tight crop, glare, or an off angle is fine; a different player, set, parallel, or grading company/grade is not.\n\nRespond in exactly this format and nothing else:\nVERDICT: MATCH, MISMATCH, or UNCERTAIN\nREASON: one sentence explaining why.`,
         },
       ],
-      config: {
-        thinkingConfig: { thinkingBudget: 0 },
-      },
+      // No thinkingConfig: gemini-3.6-flash rejected thinkingBudget: 0 with
+      // a 400 (verified live) — the earlier low-effort setting doesn't
+      // carry over, so this just uses the model's default.
     });
 
     text = response.text;
